@@ -1,5 +1,3 @@
-'use client';
-import { motion } from 'framer-motion';
 import { MessageSquare, Brain, Tags, Building2, UserCheck, GitMerge, Layers, BarChart2, TrendingUp, AlertTriangle, Bell, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -32,13 +30,9 @@ export default function MethodologyPage() {
           {/* Vertical connecting line */}
           <div className="absolute left-8 top-10 bottom-10 w-0.5 bg-indigo-200 hidden md:block"></div>
 
-          {STEPS.map((step, idx) => (
-            <motion.div 
+          {STEPS.map((step) => (
+            <div
               key={step.id}
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.5, delay: idx * 0.1 }}
               className="flex items-start gap-6 relative"
             >
               <div className="hidden md:flex relative z-10 w-16 h-16 bg-white border-4 border-indigo-100 rounded-full items-center justify-center text-indigo-600 font-bold shrink-0 shadow-sm">
@@ -54,7 +48,7 @@ export default function MethodologyPage() {
                 <h3 className="text-xl font-bold text-slate-800 mb-2">{step.title}</h3>
                 <p className="text-slate-600">{step.desc}</p>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
       </div>

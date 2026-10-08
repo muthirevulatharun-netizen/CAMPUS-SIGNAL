@@ -2,7 +2,7 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { User } from './types';
-import { api } from './api';
+import { ApiError, api } from './api';
 import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
@@ -27,25 +27,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
 
   useEffect(() => {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 5000);
+    let mounted = true;
+
     const initAuth = async () => {
       try {
         const token = window.localStorage.getItem('token');
         if (token) {
-          const userData = await api.auth.getMe();
-          setUser(userData);
+          const userData = await api.auth.getMe(controller.signal);
+          if (mounted) setUser(userData);
         }
       } catch (error) {
         console.error('Unable to restore the authentication session:', error);
-        try {
-          window.localStorage.removeItem('token');
-        } catch (storageError) {
-          console.error('Unable to clear the stored authentication token:', storageError);
+        if (error instanceof ApiError && error.status === 401) {
+          try {
+            window.localStorage.removeItem('token');
+          } catch (storageError) {
+            console.error('Unable to clear the stored authentication token:', storageError);
+          }
         }
       } finally {
-        setLoading(false);
+        window.clearTimeout(timeout);
+        if (mounted) setLoading(false);
       }
     };
     void initAuth();
+
+    return () => {
+      mounted = false;
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
   }, []);
 
   const login = useCallback(async (token: string) => {

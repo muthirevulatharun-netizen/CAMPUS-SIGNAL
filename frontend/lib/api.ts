@@ -2,6 +2,22 @@ import { Complaint, Analytics, User, Notification, Sector } from './types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+export class ApiError extends Error {
+  constructor(message: string, public readonly status: number) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+const clearStoredToken = () => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem('token');
+  } catch (error) {
+    console.error('Unable to clear the stored authentication token:', error);
+  }
+};
+
 const getHeaders = () => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   return {
@@ -10,16 +26,19 @@ const getHeaders = () => {
   };
 };
 
-const handleResponse = async (response: Response) => {
+const handleResponse = async (
+  response: Response,
+  options: { redirectOnUnauthorized?: boolean } = {},
+) => {
   if (!response.ok) {
-    if (response.status === 401) {
+    if (response.status === 401 && options.redirectOnUnauthorized !== false) {
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('token');
+        clearStoredToken();
         window.location.href = '/auth/login';
       }
     }
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.detail || 'An error occurred');
+    throw new ApiError(error.detail || 'An error occurred', response.status);
   }
   return response.json();
 };
@@ -38,7 +57,10 @@ export const api = {
   auth: {
     googleLogin: (token: string) => fetch(`${API_URL}/auth/google`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) }).then(handleResponse),
     devLogin: (email: string) => fetch(`${API_URL}/auth/dev-login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) }).then(handleResponse),
-    getMe: () => fetch(`${API_URL}/auth/me`, { headers: getHeaders() }).then(handleResponse),
+    getMe: (signal?: AbortSignal) =>
+      fetch(`${API_URL}/auth/me`, { headers: getHeaders(), signal }).then((response) =>
+        handleResponse(response, { redirectOnUnauthorized: false }),
+      ),
   },
   complaints: {
     classify: (title: string, description: string) =>

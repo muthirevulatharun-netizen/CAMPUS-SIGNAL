@@ -1,11 +1,19 @@
 'use client';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
-import { useAuth } from '@/lib/auth-context';
+import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 export function DashboardLayout({ children, requiredRole }: { children: React.ReactNode, requiredRole?: string }) {
+  return (
+    <AuthProvider>
+      <DashboardContent requiredRole={requiredRole}>{children}</DashboardContent>
+    </AuthProvider>
+  );
+}
+
+function DashboardContent({ children, requiredRole }: { children: React.ReactNode, requiredRole?: string }) {
   const { user, loading } = useAuth();
   const router = useRouter();
 

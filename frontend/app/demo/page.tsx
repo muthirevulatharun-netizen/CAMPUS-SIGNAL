@@ -1,6 +1,5 @@
 'use client';
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 
@@ -50,7 +49,7 @@ export default function DemoPage() {
 
       <main className="flex-1 flex items-center justify-center p-8 z-10">
         {phase === 'idle' && (
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center">
+          <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold mb-6 text-slate-100">See Signal Detection in Action</h1>
             <p className="text-xl text-slate-400 mb-12 max-w-2xl mx-auto">
               Inject live Wi-Fi complaints into the database, watch grouping run, and surface a campus-wide network instability signal.
@@ -62,7 +61,7 @@ export default function DemoPage() {
             >
               {injecting ? 'Injecting reports...' : '▶ START LIVE DEMO'}
             </button>
-          </motion.div>
+          </div>
         )}
 
         {phase !== 'idle' && phase !== 'signal_detected' && (
@@ -84,30 +83,25 @@ export default function DemoPage() {
                 'Cannot access student portal',
                 'Network unavailable in computer lab',
               ].map((text, i) => (
-                <motion.div
+                <div
                   key={text}
-                  initial={{ x: -50, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: i * 0.15 }}
                   className="bg-slate-800 p-4 rounded-lg border border-slate-700"
                 >
                   <span className="text-xs text-slate-400">Student report • live DB</span>
                   <p className="text-lg mt-1">&quot;{text}&quot;</p>
-                </motion.div>
+                </div>
               ))}
               {phase === 'detecting' && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-8 flex justify-center">
+                <div className="py-8 flex justify-center">
                   <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                </motion.div>
+                </div>
               )}
             </div>
           </div>
         )}
 
         {phase === 'signal_detected' && (
-          <motion.div
-            initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
+          <div
             className="bg-slate-800 rounded-2xl border-2 border-red-500 p-10 max-w-3xl w-full shadow-[0_0_100px_-20px_rgba(239,68,68,0.4)] text-center relative overflow-hidden"
           >
             <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-red-600 via-orange-500 to-red-600 animate-pulse" />
@@ -131,7 +125,7 @@ export default function DemoPage() {
               </div>
             </div>
 
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="mt-10 flex gap-4 justify-center flex-wrap">
+            <div className="mt-10 flex gap-4 justify-center flex-wrap">
               {signal?.id && (
                 <Link href={`/admin/issues/${signal.id}`} className="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-bold text-lg">
                   Investigate Cluster
@@ -140,8 +134,8 @@ export default function DemoPage() {
               <Link href="/auth/login" className="px-8 py-4 bg-slate-700 hover:bg-slate-600 rounded-lg font-bold text-lg">
                 Open Admin Dashboard
               </Link>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         )}
       </main>
     </div>

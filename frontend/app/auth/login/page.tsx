@@ -11,7 +11,7 @@ interface GoogleCredentialResponse {
 declare global {
   interface Window {
     google?: {
-      accounts: {
+      accounts?: {
         id: {
           initialize: (options: {
             client_id: string;
@@ -51,15 +51,16 @@ export default function LoginPage() {
   }, [login]);
 
   const initializeGoogleSignIn = useCallback(() => {
-    if (!googleClientId || !googleButtonRef.current || !window.google?.accounts.id) return;
+    const googleIdentity = window.google?.accounts?.id;
+    if (!googleClientId || !googleButtonRef.current || !googleIdentity) return;
     googleButtonRef.current.replaceChildren();
-    window.google.accounts.id.initialize({
+    googleIdentity.initialize({
       client_id: googleClientId,
       callback: (response) => {
         void signInWithGoogle(response.credential);
       },
     });
-    window.google.accounts.id.renderButton(googleButtonRef.current, {
+    googleIdentity.renderButton(googleButtonRef.current, {
       theme: 'outline',
       size: 'large',
       text: 'continue_with',
