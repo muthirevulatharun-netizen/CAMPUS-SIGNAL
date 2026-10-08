@@ -1,15 +1,27 @@
-from fastapi import FastAPI, Depends
+import os
+import random
+import uuid
+from datetime import datetime, timedelta
+
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from database import engine, Base, get_db
-from routers import auth, complaints, issues, analytics, notifications, sectors, users, search
+
+from database import Base, engine, get_db
+from models import Complaint, IssueGroup, Notification, Sector, StaffAssignment, User
+from routers import analytics, auth, complaints, issues, notifications, search, sectors, users
 from seed_data import run_seed_data
-from models import Complaint, IssueGroup, ComplaintGroupMember, Notification, User, Sector, StaffAssignment
 from services.classifier import classify
 from services.grouping import process_complaint_grouping
-from datetime import datetime, timedelta
-import uuid
-import random
+
+allowed_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+frontend_url = os.getenv("FRONTEND_URL")
+if frontend_url:
+    allowed_origins.extend(origin.strip() for origin in frontend_url.split(",") if origin.strip())
+allowed_origins = list(dict.fromkeys(allowed_origins))
 
 app = FastAPI(
     title="Campus Signal API",
@@ -19,7 +31,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
