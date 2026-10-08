@@ -28,18 +28,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const initAuth = async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        try {
+      try {
+        const token = window.localStorage.getItem('token');
+        if (token) {
           const userData = await api.auth.getMe();
           setUser(userData);
-        } catch (error) {
-          localStorage.removeItem('token');
         }
+      } catch (error) {
+        console.error('Unable to restore the authentication session:', error);
+        try {
+          window.localStorage.removeItem('token');
+        } catch (storageError) {
+          console.error('Unable to clear the stored authentication token:', storageError);
+        }
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
-    initAuth();
+    void initAuth();
   }, []);
 
   const login = (token: string) => {

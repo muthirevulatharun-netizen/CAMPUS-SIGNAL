@@ -1,6 +1,4 @@
-'use client';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
 
 export default function LandingPage() {
   return (
@@ -8,12 +6,7 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="relative flex flex-col items-center justify-center min-h-[80vh] px-4 text-center overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-900/20 via-dark to-dark pointer-events-none"></div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="z-10 max-w-4xl"
-        >
+        <div className="z-10 max-w-4xl">
           <div className="w-24 h-24 mx-auto mb-8 relative">
             <div className="absolute inset-0 bg-indigo-500 rounded-full animate-signal-pulse blur-xl opacity-50"></div>
             <div className="relative flex items-center justify-center w-full h-full bg-indigo-600 rounded-full">
@@ -50,7 +43,7 @@ export default function LandingPage() {
               How It Works
             </Link>
           </div>
-        </motion.div>
+        </div>
       </section>
 
       {/* Features Grid */}
