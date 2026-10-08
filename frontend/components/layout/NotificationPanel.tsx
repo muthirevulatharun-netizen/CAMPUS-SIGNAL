@@ -6,14 +6,24 @@ import { formatDistanceToNow } from 'date-fns';
 import { api } from '@/lib/api';
 import { Notification } from '@/lib/types';
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth-context';
 
 export function NotificationPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const [items, setItems] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const { user } = useAuth();
 
-  const load = () => {
+  const load = async () => {
     setLoading(true);
-    api.notifications.list().then(setItems).catch(() => setItems([])).finally(() => setLoading(false));
+    setError('');
+    try {
+      setItems(await api.notifications.list());
+    } catch {
+      setError('Unable to load notifications. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -23,8 +33,12 @@ export function NotificationPanel({ isOpen, onClose }: { isOpen: boolean; onClos
   const unread = items.filter((n) => !n.is_read).length;
 
   const markAll = async () => {
-    await api.notifications.markAllRead().catch(() => {});
-    load();
+    try {
+      await api.notifications.markAllRead();
+      await load();
+    } catch {
+      setError('Unable to mark notifications as read.');
+    }
   };
 
   return (
@@ -57,6 +71,7 @@ export function NotificationPanel({ isOpen, onClose }: { isOpen: boolean; onClos
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {loading && <p className="text-sm text-slate-500">Loading...</p>}
+              {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">{error}</p>}
               {!loading && items.length === 0 && (
                 <p className="text-sm text-slate-500 text-center py-8">No notifications yet.</p>
               )}
@@ -71,11 +86,18 @@ export function NotificationPanel({ isOpen, onClose }: { isOpen: boolean; onClos
                     {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
                   </p>
                   {n.complaint_id && (
-                    <Link href={`/student/complaints/${n.complaint_id}`} className="text-xs text-indigo-600 font-medium mt-2 inline-block">
+                    <Link
+                      href={user?.role === 'staff'
+                        ? `/staff/complaints/${n.complaint_id}`
+                        : user?.role === 'admin'
+                          ? '/admin/complaints'
+                          : `/student/complaints/${n.complaint_id}`}
+                      className="text-xs text-indigo-600 font-medium mt-2 inline-block"
+                    >
                       View complaint
                     </Link>
                   )}
-                  {n.issue_group_id && (
+                  {n.issue_group_id && user?.role === 'admin' && (
                     <Link href={`/admin/issues/${n.issue_group_id}`} className="text-xs text-indigo-600 font-medium mt-2 inline-block">
                       Investigate signal
                     </Link>
@@ -87,6 +109,7 @@ export function NotificationPanel({ isOpen, onClose }: { isOpen: boolean; onClos
             <div className="p-4 border-t border-slate-100">
               <button
                 onClick={markAll}
+                disabled={loading || unread === 0}
                 className="w-full py-2 text-sm text-center text-slate-600 font-medium hover:bg-slate-50 rounded-lg flex items-center justify-center gap-2"
               >
                 <CheckCircle2 className="w-4 h-4" /> Mark all as read

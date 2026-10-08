@@ -17,26 +17,65 @@ const ACTIONS = [
 
 export default function StaffComplaintDetail({ params }: { params: { id: string } }) {
   const [complaint, setComplaint] = useState<any>(null);
+  const [attachments, setAttachments] = useState<any[]>([]);
   const [comment, setComment] = useState('');
+  const [evidence, setEvidence] = useState<File | null>(null);
+  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
-  const load = () => api.complaints.get(params.id).then(setComplaint);
+  const load = async () => {
+    const data = await api.complaints.get(params.id);
+    setComplaint(data);
+    const files = await api.complaints.attachments(params.id).catch(() => []);
+    setAttachments(files);
+  };
 
   useEffect(() => {
-    load().finally(() => setLoading(false));
+    load().catch(() => setMessage('Unable to load this complaint.')).finally(() => setLoading(false));
   }, [params.id]);
 
   const updateStatus = async (status: string, label: string) => {
     setBusy(true);
+    setMessage('');
     try {
       await api.complaints.updateStatus(params.id, status, comment || `${label} by staff`);
       setComment('');
       await load();
     } catch {
-      alert('Unable to update status. Please check your connection and try again.');
+      setMessage('Unable to update status. Please check your connection and try again.');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const uploadEvidence = async () => {
+    if (!evidence) return;
+    setBusy(true);
+    setMessage('');
+    try {
+      await api.complaints.uploadAttachment(params.id, evidence);
+      setEvidence(null);
+      await load();
+      setMessage('Evidence uploaded successfully.');
+    } catch {
+      setMessage('Unable to upload the image. Use a JPEG, PNG, or WebP file up to 5 MB.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const downloadAttachment = async (attachment: any) => {
+    try {
+      const blob = await api.complaints.downloadAttachment(params.id, attachment.id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = attachment.display_name;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+      setMessage('Unable to download this evidence image.');
     }
   };
 
@@ -56,6 +95,23 @@ export default function StaffComplaintDetail({ params }: { params: { id: string 
         <h1 className="text-2xl font-bold text-slate-900">{complaint.title}</h1>
         <p className="text-slate-700 whitespace-pre-wrap">{complaint.description}</p>
         <p className="text-sm text-slate-500">{complaint.location} • {format(new Date(complaint.created_at), 'MMM d, yyyy HH:mm')}</p>
+        {attachments.length > 0 && (
+          <div className="border-t border-slate-100 pt-4">
+            <h2 className="mb-2 text-sm font-semibold text-slate-700">Photos and evidence</h2>
+            <div className="flex flex-wrap gap-2">
+              {attachments.map((attachment) => (
+                <button
+                  key={attachment.id}
+                  type="button"
+                  onClick={() => void downloadAttachment(attachment)}
+                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-indigo-700 hover:bg-indigo-50"
+                >
+                  {attachment.display_name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="border-t border-slate-100 pt-4 space-y-3">
           <label className="text-sm font-medium text-slate-700">Progress comment</label>
@@ -66,6 +122,26 @@ export default function StaffComplaintDetail({ params }: { params: { id: string 
             placeholder="Add notes for the student audit trail..."
             className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
           />
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="flex-1 text-sm font-medium text-slate-700">
+              Upload evidence (image up to 5 MB)
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(event) => setEvidence(event.target.files?.[0] || null)}
+                className="mt-1 block w-full text-sm font-normal text-slate-600"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => void uploadEvidence()}
+              disabled={!evidence || evidence.size > 5 * 1024 * 1024 || busy}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
+            >
+              Upload Evidence
+            </button>
+          </div>
+          {message && <p className="text-sm text-indigo-700" role="status">{message}</p>}
           <div className="flex flex-wrap gap-2">
             {ACTIONS.map((a) => (
               <button

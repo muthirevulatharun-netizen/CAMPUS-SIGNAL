@@ -54,18 +54,21 @@ Frontend runs on: http://localhost:3000
 
 ### Backend `.env`
 ```
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
 DATABASE_URL=sqlite:///./campus_signal.db
-JWT_SECRET=your-secret-key-here
+JWT_SECRET=
 FRONTEND_URL=http://localhost:3000
+GOOGLE_CLIENT_ID=your-google-oauth-client-id
+ALLOW_DEV_LOGIN=true
 ```
 
 ### Frontend `.env.local`
 ```
 NEXT_PUBLIC_API_URL=http://localhost:8000
-NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-oauth-client-id
+NEXT_PUBLIC_ENABLE_DEV_LOGIN=true
 ```
+
+For deployment, set `JWT_SECRET` to a long random value, `GOOGLE_CLIENT_ID`, and `FRONTEND_URL` in Render, and set `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_GOOGLE_CLIENT_ID` in Vercel. Keep `ALLOW_DEV_LOGIN` and `NEXT_PUBLIC_ENABLE_DEV_LOGIN` disabled in production. Never commit actual credentials.
 
 ---
 

@@ -1,15 +1,20 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session, joinedload
 from database import get_db
-from models import Complaint, IssueGroup, StaffAssignment, User
+from models import Complaint, ComplaintGroupMember, IssueGroup, StaffAssignment, User
+from routers.auth import get_current_user
 
 router = APIRouter(prefix="/search", tags=["search"])
 
 
 @router.get("")
-def global_search(q: str = Query(..., min_length=1), db: Session = Depends(get_db)):
-    pattern = f"%{q}%"
-    complaints = (
+def global_search(
+    q: str = Query(..., min_length=1, max_length=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    pattern = f"%{q.strip()}%"
+    complaint_query = (
         db.query(Complaint)
         .options(joinedload(Complaint.sector), joinedload(Complaint.assigned_staff))
         .filter(
@@ -19,18 +24,35 @@ def global_search(q: str = Query(..., min_length=1), db: Session = Depends(get_d
             | Complaint.category.ilike(pattern)
         )
         .order_by(Complaint.created_at.desc())
-        .limit(50)
-        .all()
     )
+    if current_user.role == "student":
+        complaint_query = complaint_query.filter(Complaint.student_id == current_user.id)
+    elif current_user.role == "staff":
+        sector_ids = db.query(StaffAssignment.sector_id).filter(
+            StaffAssignment.staff_user_id == current_user.id
+        )
+        complaint_query = complaint_query.filter(Complaint.sector_id.in_(sector_ids))
+    complaints = complaint_query.limit(50).all()
 
-    issues = (
+    issue_query = (
         db.query(IssueGroup)
         .options(joinedload(IssueGroup.sector))
         .filter(IssueGroup.title.ilike(pattern) | IssueGroup.description.ilike(pattern))
         .order_by(IssueGroup.complaint_count.desc())
-        .limit(20)
-        .all()
     )
+    if current_user.role == "student":
+        visible_groups = (
+            db.query(ComplaintGroupMember.issue_group_id)
+            .join(Complaint, Complaint.id == ComplaintGroupMember.complaint_id)
+            .filter(Complaint.student_id == current_user.id)
+        )
+        issue_query = issue_query.filter(IssueGroup.id.in_(visible_groups))
+    elif current_user.role == "staff":
+        sector_ids = db.query(StaffAssignment.sector_id).filter(
+            StaffAssignment.staff_user_id == current_user.id
+        )
+        issue_query = issue_query.filter(IssueGroup.sector_id.in_(sector_ids))
+    issues = issue_query.limit(20).all()
 
     locations = sorted({c.location for c in complaints if c.location})
     sector_ids = {c.sector_id for c in complaints if c.sector_id}
@@ -44,7 +66,7 @@ def global_search(q: str = Query(..., min_length=1), db: Session = Depends(get_d
         staff_users = db.query(User).filter(User.id.in_(staff_ids), User.role == "staff").all()
 
     return {
-        "query": q,
+        "query": q.strip(),
         "summary": {
             "complaints": len(complaints),
             "locations": len(locations),

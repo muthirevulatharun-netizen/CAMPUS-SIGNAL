@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { User } from './types';
 import { api } from './api';
 import { useRouter } from 'next/navigation';
@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (token: string) => void;
+  login: (token: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -16,7 +16,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
-  login: () => {},
+  login: async () => {},
   logout: () => {},
   isAuthenticated: false,
 });
@@ -48,19 +48,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     void initAuth();
   }, []);
 
-  const login = (token: string) => {
-    localStorage.setItem('token', token);
-    api.auth.getMe().then(userData => {
+  const login = useCallback(async (token: string) => {
+    window.localStorage.setItem('token', token);
+    try {
+      const userData = await api.auth.getMe();
       setUser(userData);
       router.push(`/${userData.role}`);
-    }).catch(console.error);
-  };
+    } catch (error) {
+      window.localStorage.removeItem('token');
+      setUser(null);
+      throw error;
+    }
+  }, [router]);
 
-  const logout = () => {
-    localStorage.removeItem('token');
+  const logout = useCallback(() => {
+    window.localStorage.removeItem('token');
     setUser(null);
     router.push('/auth/login');
-  };
+  }, [router]);
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, isAuthenticated: !!user }}>

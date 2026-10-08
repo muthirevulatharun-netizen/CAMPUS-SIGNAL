@@ -1,15 +1,34 @@
 'use client';
-import { useState, FormEvent } from 'react';
+import { useEffect, useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { Search, Bell } from 'lucide-react';
 import { NotificationPanel } from './NotificationPanel';
+import { api } from '@/lib/api';
 
 export function Header() {
   const { user } = useAuth();
   const router = useRouter();
   const [showNotifications, setShowNotifications] = useState(false);
   const [query, setQuery] = useState('');
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    const refreshUnreadCount = () => {
+      api.notifications.list()
+        .then((items) => {
+          if (active) setUnreadCount(items.filter((item: { is_read: boolean }) => !item.is_read).length);
+        })
+        .catch((error) => console.error('Unable to refresh notification count:', error));
+    };
+    refreshUnreadCount();
+    const timer = window.setInterval(refreshUnreadCount, 60_000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [user?.id]);
 
   const onSearch = (e: FormEvent) => {
     e.preventDefault();
@@ -40,6 +59,11 @@ export function Header() {
             aria-label="Notifications"
           >
             <Bell className="w-5 h-5" />
+            {unreadCount > 0 && (
+              <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-red-600 px-1 text-center text-[10px] font-bold text-white">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
           </button>
 
           <div className="flex items-center gap-2">

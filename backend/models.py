@@ -71,7 +71,28 @@ class Complaint(Base):
     student = relationship("User", foreign_keys=[student_id], back_populates="complaints")
     assigned_staff = relationship("User", foreign_keys=[assigned_staff_id], back_populates="assigned_complaints")
     sector = relationship("Sector")
-    status_history = relationship("StatusHistory", back_populates="complaint")
+    status_history = relationship(
+        "StatusHistory",
+        back_populates="complaint",
+        order_by="StatusHistory.created_at",
+    )
+
+
+class ComplaintAttachment(Base):
+    __tablename__ = "complaint_attachments"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    complaint_id = Column(String, ForeignKey("complaints.id"), nullable=False, index=True)
+    uploader_id = Column(String, ForeignKey("users.id"), nullable=False)
+    stored_name = Column(String, nullable=False, unique=True)
+    display_name = Column(String, nullable=False)
+    content_type = Column(String, nullable=False)
+    file_size = Column(Integer, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    complaint = relationship("Complaint")
+    uploader = relationship("User")
+
 
 class IssueGroup(Base):
     __tablename__ = "issue_groups"

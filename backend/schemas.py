@@ -1,5 +1,5 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional, List, Dict, Any
+from pydantic import BaseModel, EmailStr, Field
+from typing import Any, Dict, List, Literal, Optional
 from datetime import datetime
 
 class UserBase(BaseModel):
@@ -47,6 +47,50 @@ class ComplaintBase(BaseModel):
 
 class ComplaintCreate(ComplaintBase):
     pass
+
+
+class StatusUpdate(BaseModel):
+    status: Literal["submitted", "assigned", "acknowledged", "investigating", "action_taken", "resolved", "closed"]
+    comment: Optional[str] = Field(default=None, max_length=2000)
+
+
+class ComplaintAssignment(BaseModel):
+    staff_id: str = Field(min_length=1)
+
+
+class ComplaintPriorityUpdate(BaseModel):
+    priority: Literal["low", "medium", "high", "critical"]
+    reason: str = Field(min_length=1, max_length=2000)
+
+
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    email: Optional[EmailStr] = None
+    role: Optional[Literal["student", "staff", "admin"]] = None
+    department: Optional[str] = Field(default=None, max_length=200)
+    is_active: Optional[bool] = None
+    phone: Optional[str] = Field(default=None, max_length=40)
+    profile_photo: Optional[str] = Field(default=None, max_length=2000)
+
+
+class StaffAssignmentCreate(BaseModel):
+    staff_user_id: str = Field(min_length=1)
+    sector_id: str = Field(min_length=1)
+
+
+class StaffCreate(BaseModel):
+    full_name: str = Field(min_length=1, max_length=200)
+    email: EmailStr
+    department: Optional[str] = Field(default=None, max_length=200)
+
+
+class IssueStatusUpdate(BaseModel):
+    status: Literal["active", "investigating", "resolved", "closed"]
+
+
+class IssueAssignment(BaseModel):
+    staff_id: str = Field(min_length=1)
+
 
 class StatusHistoryResponse(BaseModel):
     id: str

@@ -11,11 +11,30 @@ import Link from 'next/link';
 
 export default function ComplaintDetail({ params }: { params: { id: string } }) {
   const [complaint, setComplaint] = useState<any>(null);
+  const [attachments, setAttachments] = useState<any[]>([]);
+  const [attachmentError, setAttachmentError] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.complaints.get(params.id).then(setComplaint).finally(() => setLoading(false));
+    api.complaints.get(params.id)
+      .then(setComplaint)
+      .finally(() => setLoading(false));
+    api.complaints.attachments(params.id).then(setAttachments).catch(() => setAttachments([]));
   }, [params.id]);
+
+  const downloadAttachment = async (attachment: any) => {
+    try {
+      const blob = await api.complaints.downloadAttachment(params.id, attachment.id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = attachment.display_name;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setAttachmentError('Unable to download this image.');
+    }
+  };
 
   const confirmResolved = async () => {
     try {
@@ -78,6 +97,24 @@ export default function ComplaintDetail({ params }: { params: { id: string } }) 
               <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Description</h3>
               <p className="text-slate-800 whitespace-pre-wrap">{complaint.description}</p>
             </div>
+              {attachments.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Photos and evidence</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {attachments.map((attachment) => (
+                      <button
+                        key={attachment.id}
+                        type="button"
+                        onClick={() => void downloadAttachment(attachment)}
+                        className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-indigo-700 hover:bg-indigo-50"
+                      >
+                        {attachment.display_name}
+                      </button>
+                    ))}
+                  </div>
+                  {attachmentError && <p className="mt-2 text-sm text-red-700" role="alert">{attachmentError}</p>}
+                </div>
+              )}
           </div>
           
           <div className="space-y-6">

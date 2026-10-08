@@ -9,19 +9,47 @@ import { format } from 'date-fns';
 
 export default function AdminComplaintsPage() {
   const [complaints, setComplaints] = useState<any[]>([]);
+  const [options, setOptions] = useState<{ categories: string[]; locations: string[]; staff: { id: string; full_name: string }[] }>({
+    categories: [],
+    locations: [],
+    staff: [],
+  });
   const [search, setSearch] = useState('');
+  const [sectorId, setSectorId] = useState('');
+  const [category, setCategory] = useState('');
   const [priority, setPriority] = useState('');
   const [status, setStatus] = useState('');
+  const [location, setLocation] = useState('');
+  const [assignedStaffId, setAssignedStaffId] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [sectors, setSectors] = useState<{ id: string; name: string }[]>([]);
 
   const load = () => {
-    api.complaints.list({ search: search || undefined, priority: priority || undefined, status: status || undefined })
+    api.complaints.list({
+      search: search || undefined,
+      sector_id: sectorId || undefined,
+      category: category || undefined,
+      priority: priority || undefined,
+      status: status || undefined,
+      location: location || undefined,
+      assigned_staff_id: assignedStaffId || undefined,
+      date_from: dateFrom || undefined,
+      date_to: dateTo || undefined,
+    })
       .then(setComplaints)
       .catch(console.error);
   };
 
   useEffect(() => {
+    Promise.all([api.complaints.options(), api.sectors.list()])
+      .then(([filterOptions, availableSectors]) => {
+        setOptions(filterOptions);
+        setSectors(availableSectors);
+      })
+      .catch(console.error);
     load();
-  }, [priority, status]);
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -39,6 +67,14 @@ export default function AdminComplaintsPage() {
               className="pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
             />
           </div>
+          <select value={sectorId} onChange={(e) => setSectorId(e.target.value)} className="border border-slate-300 rounded-lg text-sm px-3 py-2">
+            <option value="">All sectors</option>
+            {sectors.map((sector) => <option key={sector.id} value={sector.id}>{sector.name}</option>)}
+          </select>
+          <select value={category} onChange={(e) => setCategory(e.target.value)} className="border border-slate-300 rounded-lg text-sm px-3 py-2">
+            <option value="">All categories</option>
+            {options.categories.map((value) => <option key={value} value={value}>{value}</option>)}
+          </select>
           <select value={priority} onChange={(e) => setPriority(e.target.value)} className="border border-slate-300 rounded-lg text-sm px-3 py-2">
             <option value="">All priorities</option>
             <option value="low">Low</option>
@@ -53,6 +89,22 @@ export default function AdminComplaintsPage() {
             <option value="investigating">Investigating</option>
             <option value="resolved">Resolved</option>
           </select>
+          <select value={location} onChange={(e) => setLocation(e.target.value)} className="border border-slate-300 rounded-lg text-sm px-3 py-2">
+            <option value="">All locations</option>
+            {options.locations.map((value) => <option key={value} value={value}>{value}</option>)}
+          </select>
+          <select value={assignedStaffId} onChange={(e) => setAssignedStaffId(e.target.value)} className="border border-slate-300 rounded-lg text-sm px-3 py-2">
+            <option value="">All staff</option>
+            {options.staff.map((staffMember) => <option key={staffMember.id} value={staffMember.id}>{staffMember.full_name}</option>)}
+          </select>
+          <label className="text-xs text-slate-500">
+            From
+            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="ml-2 border border-slate-300 rounded-lg px-2 py-2 text-sm text-slate-700" />
+          </label>
+          <label className="text-xs text-slate-500">
+            To
+            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="ml-2 border border-slate-300 rounded-lg px-2 py-2 text-sm text-slate-700" />
+          </label>
           <button onClick={load} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
             <Filter className="w-4 h-4" /> Apply
           </button>

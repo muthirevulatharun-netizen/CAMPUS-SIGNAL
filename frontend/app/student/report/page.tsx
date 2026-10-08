@@ -16,6 +16,8 @@ export default function ReportProblem() {
   const [isTyping, setIsTyping] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submittedData, setSubmittedData] = useState<any>(null);
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [formError, setFormError] = useState('');
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -41,20 +43,29 @@ export default function ReportProblem() {
   }, [formData.title, formData.description]);
 
   const handleSubmit = async () => {
+    setFormError('');
     setSubmitting(true);
     try {
       const res = await api.complaints.create({ ...formData, priority: classification?.priority || 'medium' });
+      let attachmentWarning = '';
+      if (photo) {
+        try {
+          await api.complaints.uploadAttachment(res.id, photo);
+        } catch {
+          attachmentWarning = 'Your complaint was submitted, but the photo could not be uploaded.';
+        }
+      }
       setSubmittedData({
         id: res.id,
         number: res.complaint_number,
         staff: res.assigned_staff?.full_name || 'Pending assignment',
         sector: res.sector?.name || classification?.sector || 'General',
         status: res.status,
+        attachmentWarning,
       });
       setStep(3);
-    } catch (err) {
-      console.error(err);
-      alert('Failed to submit');
+    } catch {
+      setFormError('Unable to submit your complaint. Please check your connection and try again.');
     } finally {
       setSubmitting(false);
     }
@@ -88,6 +99,9 @@ export default function ReportProblem() {
               <span className="font-semibold text-slate-900">{submittedData.staff}</span>
             </div>
           </div>
+          {submittedData.attachmentWarning && (
+            <p className="mb-6 text-sm text-amber-700" role="status">{submittedData.attachmentWarning}</p>
+          )}
           
           <button 
             onClick={() => router.push(`/student/complaints/${submittedData.id}`)}
@@ -136,8 +150,31 @@ export default function ReportProblem() {
               {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
             </select>
           </div>
+          <div>
+            <label htmlFor="complaint-photo" className="block text-sm font-medium text-slate-700 mb-1">
+              Optional photo (JPEG, PNG, or WebP; up to 5 MB)
+            </label>
+            <input
+              id="complaint-photo"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(event) => {
+                const selected = event.target.files?.[0] || null;
+                if (selected && selected.size > 5 * 1024 * 1024) {
+                  setPhoto(null);
+                  setFormError('Choose an image smaller than 5 MB.');
+                  event.target.value = '';
+                  return;
+                }
+                setFormError('');
+                setPhoto(selected);
+              }}
+              className="block w-full text-sm text-slate-600 file:mr-4 file:rounded-md file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:font-medium file:text-indigo-700"
+            />
+          </div>
         </div>
 
+        {formError && <p className="text-sm text-red-700" role="alert">{formError}</p>}
         <div className="flex justify-end">
           <button 
             disabled={!formData.title || !formData.description || submitting}

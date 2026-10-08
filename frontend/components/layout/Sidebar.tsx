@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/auth-context';
 import { 
   LayoutDashboard, FileText, PlusCircle, 
   CheckSquare, Activity, AlertTriangle, 
-  BarChart3, Users, Settings, LogOut, Waves
+  BarChart3, Users, Settings, LogOut, Waves, History
 } from 'lucide-react';
 
 export function Sidebar() {
@@ -31,6 +31,7 @@ export function Sidebar() {
       { name: 'Signals', href: '/admin/signals', icon: Waves },
       { name: 'Emerging Issues', href: '/admin/emerging', icon: AlertTriangle },
       { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
+      { name: 'Audit Trail', href: '/admin/audit', icon: History },
       { name: 'Staff', href: '/admin/staff', icon: Users },
       { name: 'Settings', href: '/admin/settings', icon: Settings },
     ]

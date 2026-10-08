@@ -16,17 +16,68 @@ const CHECKLIST = [
 
 export default function AdminIssueDetail({ params }: { params: { id: string } }) {
   const [issue, setIssue] = useState<any>(null);
+  const [staff, setStaff] = useState<any[]>([]);
+  const [selectedStaff, setSelectedStaff] = useState('');
   const [checked, setChecked] = useState<boolean[]>(CHECKLIST.map(() => false));
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
-    api.issues.get(params.id).then(setIssue).finally(() => setLoading(false));
+    Promise.all([api.issues.get(params.id), api.users.getStaff()])
+      .then(([issueData, staffData]) => {
+        setIssue(issueData);
+        setStaff(staffData);
+      })
+      .catch(() => setMessage('Unable to load this signal. Please try again.'))
+      .finally(() => setLoading(false));
   }, [params.id]);
 
   if (loading) return <LoadingSkeleton />;
-  if (!issue) return <p className="text-slate-600">Signal not found.</p>;
+  if (!issue) return <p className="text-slate-600">{message || 'Signal not found.'}</p>;
 
   const trendMult = issue.trend_percentage ? (issue.trend_percentage / 100 + 1).toFixed(1) : '—';
+
+  const updateStatus = async (status: string) => {
+    setBusy(true);
+    setMessage('');
+    try {
+      await api.issues.updateStatus(issue.id, status);
+      setIssue(await api.issues.get(issue.id));
+      setMessage(`Signal marked ${status}.`);
+    } catch {
+      setMessage('Unable to update the signal status.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const assignSignal = async () => {
+    if (!selectedStaff) return;
+    setBusy(true);
+    setMessage('');
+    try {
+      const result = await api.issues.assign(issue.id, selectedStaff);
+      setMessage(`Signal assigned across ${result.complaints_assigned} related complaints.`);
+    } catch {
+      setMessage("Unable to assign the signal. Check that the selected staff member belongs to this sector.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const notifyTeam = async () => {
+    setBusy(true);
+    setMessage('');
+    try {
+      const result = await api.issues.notifyTeam(issue.id);
+      setMessage(`Alert sent to ${result.recipients} sector staff members.`);
+    } catch {
+      setMessage('Unable to notify the sector team.');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -79,19 +130,46 @@ export default function AdminIssueDetail({ params }: { params: { id: string } })
           </div>
 
           <div className="flex flex-wrap gap-2">
+            <select
+              value={selectedStaff}
+              onChange={(event) => setSelectedStaff(event.target.value)}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            >
+              <option value="">Assign to sector staff...</option>
+              {staff
+                .filter((person) => person.sectors?.some((sector: { id: string }) => sector.id === issue.sector_id))
+                .map((person) => <option key={person.id} value={person.id}>{person.full_name}</option>)}
+            </select>
             <button
-              onClick={() => api.issues.updateStatus(issue.id, 'investigating')}
+              onClick={() => void assignSignal()}
+              disabled={busy || !selectedStaff}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
+            >
+              Assign Signal
+            </button>
+            <button
+              onClick={() => void notifyTeam()}
+              disabled={busy}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
+            >
+              Notify Team
+            </button>
+            <button
+              onClick={() => void updateStatus('investigating')}
+              disabled={busy}
               className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700"
             >
               Mark Investigating
             </button>
             <button
-              onClick={() => api.issues.updateStatus(issue.id, 'resolved')}
+              onClick={() => void updateStatus('resolved')}
+              disabled={busy}
               className="px-4 py-2 bg-white border border-slate-300 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50"
             >
               Resolve Signal
             </button>
           </div>
+          {message && <p className="text-sm text-indigo-700" role="status">{message}</p>}
         </div>
       </div>
     </div>

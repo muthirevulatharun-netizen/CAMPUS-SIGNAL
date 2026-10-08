@@ -5,8 +5,13 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./campus_signal.db"
-    JWT_SECRET: str = "your-secret-key"
+    JWT_SECRET: str = ""
     FRONTEND_URL: str = "http://localhost:3000"
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    SUPABASE_URL: str = ""
+    SUPABASE_ANON_KEY: str = ""
+    ALLOW_DEV_LOGIN: bool = False
 
     class Config:
         env_file = ".env"

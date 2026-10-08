@@ -4,12 +4,16 @@ from database import get_db
 from models import Complaint, IssueGroup, Sector, User, ComplaintGroupMember
 from datetime import datetime, timedelta
 from collections import defaultdict
+from routers.auth import require_roles
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 
 @router.get("")
-def get_analytics(db: Session = Depends(get_db)):
+def get_analytics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("admin")),
+):
     complaints = db.query(Complaint).options(
         joinedload(Complaint.sector),
         joinedload(Complaint.student),
