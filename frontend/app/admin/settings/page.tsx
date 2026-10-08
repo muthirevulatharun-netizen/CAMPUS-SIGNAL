@@ -2,6 +2,10 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
+import type { Role } from '@/lib/types';
+
+const isRole = (value: string): value is Role =>
+  value === 'student' || value === 'staff' || value === 'admin';
 
 export default function AdminSettingsPage() {
   const [sectors, setSectors] = useState<any[]>([]);
@@ -32,7 +36,7 @@ export default function AdminSettingsPage() {
     }
   };
 
-  const updateRole = async (userId: string, role: string) => {
+  const updateRole = async (userId: string, role: Role) => {
     try {
       await api.users.update(userId, { role });
       await refresh();
@@ -100,7 +104,11 @@ export default function AdminSettingsPage() {
                   <td className="py-3">
                     <select
                       value={u.role}
-                      onChange={(e) => updateRole(u.id, e.target.value)}
+                      onChange={(e) => {
+                        if (isRole(e.target.value)) {
+                          void updateRole(u.id, e.target.value);
+                        }
+                      }}
                       className="border border-slate-300 rounded-md px-2 py-1 capitalize"
                     >
                       <option value="student">student</option>
