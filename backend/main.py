@@ -20,6 +20,7 @@ allowed_origins = [
 "https://campus-signal-vb71-muthirevulatharun-netizens-projects.vercel.app",
 "https://campus-signal-vb71-git-uday-muthirevulatharun-netizens-projects.vercel.app",
 "https://campus-signal-vb71-p3e5xis94.vercel.app",
+"https://campus-signal-16.vercel.app",
 ]
 
 frontend_url = settings.FRONTEND_URL
