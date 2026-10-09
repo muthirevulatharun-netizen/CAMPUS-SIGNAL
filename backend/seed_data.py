@@ -1,4 +1,6 @@
 from sqlalchemy.orm import Session
+
+from database import settings
 from models import User, Sector, Complaint, IssueGroup, ComplaintGroupMember, Notification, StatusHistory, StaffAssignment
 from services.classifier import SECTOR_KEYWORDS, classify
 import random
@@ -39,7 +41,7 @@ def run_seed_data(db: Session):
         id=generate_uuid(),
         full_name="Dr. Anil Mehta",
         email="admin@college.edu",
-        role="admin",
+        role="admin" if settings.ALLOW_DEV_LOGIN else "student",
         department="Administration",
         profile_photo=None
     )

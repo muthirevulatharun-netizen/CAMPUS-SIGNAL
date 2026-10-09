@@ -153,6 +153,11 @@ def update_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     updates = payload.model_dump(exclude_unset=True)
+    if "role" in updates:
+        raise HTTPException(
+            status_code=403,
+            detail="User roles cannot be changed through this endpoint",
+        )
     new_email = updates.get("email")
     if new_email and new_email != user.email:
         duplicate = db.query(User.id).filter(User.email == str(new_email), User.id != user.id).first()

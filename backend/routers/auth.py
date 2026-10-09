@@ -5,13 +5,15 @@ from typing import Optional
 import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException
 from jose import JWTError, jwt
-from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import or_
+from pydantic import BaseModel, EmailStr, Field, ValidationError
+from sqlalchemy import func
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from database import get_db, settings
 from models import User
 from schemas import UserResponse
+from services.admin_provisioning import normalize_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 ALGORITHM = "HS256"
@@ -25,6 +27,15 @@ class DevLoginRequest(BaseModel):
 
 class GoogleLoginRequest(BaseModel):
     token: str = Field(min_length=1)
+
+
+class VerifiedGoogleClaims(BaseModel):
+    aud: str
+    email: EmailStr
+    email_verified: bool
+    sub: str = Field(min_length=1)
+    name: Optional[str] = None
+    picture: Optional[str] = None
 
 
 def create_access_token(user: User) -> str:
@@ -116,34 +127,55 @@ def google_auth(payload: GoogleLoginRequest, db: Session = Depends(get_db)):
     if response.status_code != 200:
         raise HTTPException(status_code=401, detail="Google ID token is invalid or expired")
     try:
-        claims = response.json()
-    except ValueError as exc:
+        claims = VerifiedGoogleClaims.model_validate(response.json())
+    except (ValueError, ValidationError) as exc:
         raise HTTPException(status_code=401, detail="Google returned an invalid token response") from exc
-    email = claims.get("email")
-    email_verified = claims.get("email_verified") in (True, "true")
-    if claims.get("aud") != settings.GOOGLE_CLIENT_ID or not email or not email_verified:
+    email = normalize_email(str(claims.email))
+    if claims.aud != settings.GOOGLE_CLIENT_ID or not claims.email_verified:
         raise HTTPException(status_code=401, detail="Google account could not be verified")
 
-    email = email.lower()
-    google_id = claims.get("sub")
-    if not google_id:
-        raise HTTPException(status_code=401, detail="Google account identifier is missing")
-    user = db.query(User).filter(or_(User.google_id == google_id, User.email == email)).first()
+    google_id = claims.sub
+    google_user = db.query(User).filter(User.google_id == google_id).first()
+    matching_email_users = (
+        db.query(User)
+        .filter(func.lower(func.trim(User.email)) == email)
+        .all()
+    )
+    if len(matching_email_users) > 1:
+        raise HTTPException(status_code=409, detail="Multiple accounts use this email; contact an administrator")
+    email_user = matching_email_users[0] if matching_email_users else None
+    if google_user and email_user and google_user.id != email_user.id:
+        raise HTTPException(status_code=409, detail="Google identity is linked to a different account")
+
+    user = google_user or email_user
     if user and not user.is_active:
         raise HTTPException(status_code=403, detail="This account is inactive")
     if not user:
         user = User(
             email=email,
-            full_name=claims.get("name") or email.split("@")[0],
+            full_name=claims.name or email.split("@")[0],
             role="student",
             google_id=google_id,
-            profile_photo=claims.get("picture"),
+            profile_photo=claims.picture,
         )
         db.add(user)
     else:
+        if email_user and email_user.google_id and email_user.google_id != google_id:
+            raise HTTPException(status_code=409, detail="This email is linked to a different Google account")
+        user.email = email
         user.google_id = google_id
-        user.full_name = claims.get("name") or user.full_name
-        user.profile_photo = claims.get("picture") or user.profile_photo
-    result = _login_response(user)
-    db.commit()
+        user.full_name = claims.name or user.full_name
+        user.profile_photo = claims.picture or user.profile_photo
+
+    admin_email = normalize_email(settings.ADMIN_EMAIL)
+    if admin_email and email == admin_email:
+        user.role = "admin"
+
+    try:
+        db.flush()
+        result = _login_response(user)
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Account could not be linked safely; please sign in again") from exc
     return result

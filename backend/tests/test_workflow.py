@@ -15,6 +15,7 @@ from database import Base, get_db
 from main import app
 from models import Sector, StaffAssignment, User
 from routers.auth import create_access_token
+from services.admin_provisioning import demote_demo_admin_in_production
 
 
 test_engine = create_engine(
@@ -161,6 +162,169 @@ class ComplaintWorkflowTests(unittest.TestCase):
         audit = client.get("/audit", headers=self.admin_headers)
         self.assertEqual(audit.status_code, 200)
         self.assertTrue(any(action["action"] == "priority_changed" for action in audit.json()))
+
+    def test_google_login_promotes_the_verified_configured_email_in_place(self) -> None:
+        db = TestSession()
+        existing = User(
+            id="configured-admin",
+            full_name="Existing Staff Account",
+            email=" First.Admin@Example.edu ",
+            role="staff",
+            department="IT Department",
+        )
+        db.add(existing)
+        db.commit()
+        db.close()
+
+        claims = {
+            "aud": "test-google-client",
+            "email": " FIRST.ADMIN@example.edu ",
+            "email_verified": True,
+            "sub": "google-admin-1",
+            "name": "Configured Admin",
+            "picture": "https://example.edu/admin.png",
+        }
+        google_response = type(
+            "GoogleResponse",
+            (),
+            {"status_code": 200, "json": staticmethod(lambda: claims)},
+        )()
+        with (
+            patch("routers.auth.settings.GOOGLE_CLIENT_ID", "test-google-client"),
+            patch("routers.auth.settings.ADMIN_EMAIL", " First.Admin@Example.edu "),
+            patch("routers.auth.httpx.get", return_value=google_response),
+        ):
+            response = client.post("/auth/google", json={"token": "verified-google-token"})
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["user"]["id"], "configured-admin")
+        self.assertEqual(response.json()["user"]["role"], "admin")
+        db = TestSession()
+        saved = db.query(User).filter(User.id == "configured-admin").one()
+        profile = client.get("/auth/me", headers=self._headers(saved))
+        self.assertEqual(profile.status_code, 200)
+        self.assertEqual(profile.json()["role"], "admin")
+        self.assertEqual(client.get("/analytics", headers=self._headers(saved)).status_code, 200)
+        self.assertEqual(saved.email, "first.admin@example.edu")
+        self.assertEqual(saved.department, "IT Department")
+        self.assertEqual(saved.google_id, "google-admin-1")
+        db.close()
+
+    def test_google_login_creates_only_configured_verified_email_as_admin(self) -> None:
+        def login(email: str, google_id: str):
+            claims = {
+                "aud": "test-google-client",
+                "email": email,
+                "email_verified": True,
+                "sub": google_id,
+                "name": "Google User",
+            }
+            google_response = type(
+                "GoogleResponse",
+                (),
+                {"status_code": 200, "json": staticmethod(lambda: claims)},
+            )()
+            with (
+                patch("routers.auth.settings.GOOGLE_CLIENT_ID", "test-google-client"),
+                patch("routers.auth.settings.ADMIN_EMAIL", "first-admin@example.edu"),
+                patch("routers.auth.httpx.get", return_value=google_response),
+            ):
+                return client.post("/auth/google", json={"token": "verified-google-token"})
+
+        admin_response = login(" First-Admin@Example.edu ", "google-admin-new")
+        self.assertEqual(admin_response.status_code, 200, admin_response.text)
+        self.assertEqual(admin_response.json()["user"]["role"], "admin")
+
+        student_response = login("student-new@example.edu", "google-student-new")
+        self.assertEqual(student_response.status_code, 200, student_response.text)
+        self.assertEqual(student_response.json()["user"]["role"], "student")
+        self.assertEqual(client.get("/analytics").status_code, 401)
+        self.assertEqual(
+            client.get(
+                "/analytics",
+                headers={"Authorization": f"Bearer {student_response.json()['access_token']}"},
+            ).status_code,
+            403,
+        )
+
+    def test_unverified_google_email_cannot_provision_admin(self) -> None:
+        claims = {
+            "aud": "test-google-client",
+            "email": "admin@example.edu",
+            "email_verified": False,
+            "sub": "google-unverified",
+        }
+        google_response = type(
+            "GoogleResponse",
+            (),
+            {"status_code": 200, "json": staticmethod(lambda: claims)},
+        )()
+        with (
+            patch("routers.auth.settings.GOOGLE_CLIENT_ID", "test-google-client"),
+            patch("routers.auth.settings.ADMIN_EMAIL", "admin@example.edu"),
+            patch("routers.auth.httpx.get", return_value=google_response),
+        ):
+            response = client.post("/auth/google", json={"token": "unverified-google-token"})
+
+        self.assertEqual(response.status_code, 401)
+        db = TestSession()
+        self.assertIsNone(db.query(User).filter(User.google_id == "google-unverified").first())
+        db.close()
+
+    def test_malformed_google_claims_are_rejected_safely(self) -> None:
+        google_response = type(
+            "GoogleResponse",
+            (),
+            {"status_code": 200, "json": staticmethod(lambda: ["not", "claims"])},
+        )()
+        with (
+            patch("routers.auth.settings.GOOGLE_CLIENT_ID", "test-google-client"),
+            patch("routers.auth.settings.ADMIN_EMAIL", "admin@example.edu"),
+            patch("routers.auth.httpx.get", return_value=google_response),
+        ):
+            response = client.post("/auth/google", json={"token": "malformed-google-token"})
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(
+            response.json()["detail"],
+            "Google returned an invalid token response",
+        )
+
+    def test_user_role_cannot_be_changed_by_api_request(self) -> None:
+        response = client.patch(
+            f"/users/{self.admin.id}",
+            headers=self.admin_headers,
+            json={"role": "student"},
+        )
+        self.assertEqual(response.status_code, 403)
+
+        db = TestSession()
+        saved_admin = db.query(User).filter(User.id == self.admin.id).one()
+        self.assertEqual(saved_admin.role, "admin")
+        db.close()
+
+    def test_production_seed_admin_is_demoted_without_deleting_accounts(self) -> None:
+        db = TestSession()
+        demo_admin = User(
+            id="legacy-demo-admin",
+            full_name="Legacy Demo Admin",
+            email="Admin@College.edu",
+            role="admin",
+        )
+        db.add(demo_admin)
+        db.commit()
+
+        changed = demote_demo_admin_in_production(
+            db,
+            admin_email="real-admin@example.edu",
+            allow_dev_login=False,
+        )
+
+        self.assertEqual(changed, 1)
+        self.assertEqual(db.query(User).filter(User.id == demo_admin.id).one().role, "student")
+        self.assertIsNotNone(db.query(User).filter(User.id == self.student.id).first())
+        self.assertIsNotNone(db.query(User).filter(User.id == self.staff.id).first())
+        db.close()
 
     def test_similar_reports_are_grouped_and_count_distinct_students(self) -> None:
         reports = [

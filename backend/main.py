@@ -11,6 +11,7 @@ from models import AdminAction, Complaint, IssueGroup, Notification, Sector, Sta
 from routers import analytics, audit as audit_router, auth, complaints, issues, notifications, search, sectors, users
 from routers.auth import require_roles
 from seed_data import run_seed_data
+from services.admin_provisioning import demote_demo_admin_in_production
 from services.classifier import classify
 from services.grouping import process_complaint_grouping
 
@@ -53,9 +54,11 @@ def on_startup():
     Base.metadata.create_all(bind=engine)
     db = next(get_db())
     try:
-        run_seed_data(db)
-    except Exception as e:
-        print(f"Seed warning: {e}")
+        demote_demo_admin_in_production(db, settings.ADMIN_EMAIL, settings.ALLOW_DEV_LOGIN)
+        try:
+            run_seed_data(db)
+        except Exception as e:
+            print(f"Seed warning: {e}")
     finally:
         db.close()
 

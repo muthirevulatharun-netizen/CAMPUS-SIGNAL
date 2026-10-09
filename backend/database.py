@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:3000"
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
+    ADMIN_EMAIL: str = ""
     SUPABASE_URL: str = ""
     SUPABASE_ANON_KEY: str = ""
     ALLOW_DEV_LOGIN: bool = False

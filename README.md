@@ -58,6 +58,7 @@ DATABASE_URL=sqlite:///./campus_signal.db
 JWT_SECRET=
 FRONTEND_URL=http://localhost:3000
 GOOGLE_CLIENT_ID=your-google-oauth-client-id
+ADMIN_EMAIL=your-verified-google-account@example.edu
 ALLOW_DEV_LOGIN=true
 ```
 
@@ -68,7 +69,9 @@ NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-oauth-client-id
 NEXT_PUBLIC_ENABLE_DEV_LOGIN=true
 ```
 
-For deployment, set `JWT_SECRET` to a long random value, `GOOGLE_CLIENT_ID`, and `FRONTEND_URL` in Render, and set `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_GOOGLE_CLIENT_ID` in Vercel. Keep `ALLOW_DEV_LOGIN` and `NEXT_PUBLIC_ENABLE_DEV_LOGIN` disabled in production. Never commit actual credentials.
+For deployment, set `JWT_SECRET` to a long random value, `GOOGLE_CLIENT_ID`, `ADMIN_EMAIL`, and `FRONTEND_URL` in Render, and set `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_GOOGLE_CLIENT_ID` in Vercel. `ADMIN_EMAIL` must be the email address of the Google account you will use to sign in; it is a backend-only setting and must not use a `NEXT_PUBLIC_` prefix. Google sign-in promotes or creates that account as admin after Google confirms the email. Existing matching user records are updated in place. Keep `ALLOW_DEV_LOGIN` and `NEXT_PUBLIC_ENABLE_DEV_LOGIN` disabled in production. Never commit actual credentials.
+
+To verify admin access, sign in with that Google account, then request `GET /auth/me` using the returned bearer token and confirm its `role` is `admin`. An admin-only endpoint such as `GET /analytics` should then return HTTP 200.
 
 ---
 
@@ -83,7 +86,7 @@ For deployment, set `JWT_SECRET` to a long random value, `GOOGLE_CLIENT_ID`, and
 ### Demo Login (Development)
 
 Visit http://localhost:3000/auth/login and use the dev login dropdown:
-- **Admin**: admin@college.edu
+- **Admin**: admin@college.edu (development only; seeded with the admin role only when `ALLOW_DEV_LOGIN=true`)
 - **Staff (IT)**: ravi.kumar@college.edu  
 - **Staff (Transport)**: sunita.patel@college.edu
 - **Student**: arjun.mehta@student.edu

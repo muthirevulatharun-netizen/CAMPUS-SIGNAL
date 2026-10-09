@@ -2,10 +2,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
-import type { Role } from '@/lib/types';
-
-const isRole = (value: string): value is Role =>
-  value === 'student' || value === 'staff' || value === 'admin';
 
 export default function AdminSettingsPage() {
   const [sectors, setSectors] = useState<any[]>([]);
@@ -36,23 +32,13 @@ export default function AdminSettingsPage() {
     }
   };
 
-  const updateRole = async (userId: string, role: Role) => {
-    try {
-      await api.users.update(userId, { role });
-      await refresh();
-      setMessage('User role updated.');
-    } catch {
-      setMessage('Unable to update user role.');
-    }
-  };
-
   if (loading) return <LoadingSkeleton />;
 
   return (
     <div className="space-y-8 max-w-4xl">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">System Settings</h1>
-        <p className="text-slate-500">Manage sectors, roles, and campus configuration.</p>
+        <p className="text-slate-500">Manage sectors and campus configuration.</p>
         {message && <p className="text-sm text-indigo-600 mt-2">{message}</p>}
       </div>
 
@@ -87,6 +73,7 @@ export default function AdminSettingsPage() {
 
       <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
         <h2 className="font-semibold text-slate-900">User Roles</h2>
+        <p className="text-sm text-slate-500">Roles are assigned by verified Google sign-in and managed staff accounts.</p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -102,19 +89,7 @@ export default function AdminSettingsPage() {
                   <td className="py-3 font-medium text-slate-800">{u.full_name}</td>
                   <td className="py-3 text-slate-600">{u.email}</td>
                   <td className="py-3">
-                    <select
-                      value={u.role}
-                      onChange={(e) => {
-                        if (isRole(e.target.value)) {
-                          void updateRole(u.id, e.target.value);
-                        }
-                      }}
-                      className="border border-slate-300 rounded-md px-2 py-1 capitalize"
-                    >
-                      <option value="student">student</option>
-                      <option value="staff">staff</option>
-                      <option value="admin">admin</option>
-                    </select>
+                    <span className="capitalize">{u.role}</span>
                   </td>
                 </tr>
               ))}
