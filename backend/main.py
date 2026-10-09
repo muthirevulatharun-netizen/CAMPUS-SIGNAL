@@ -18,10 +18,21 @@ from services.grouping import process_complaint_grouping
 allowed_origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://campus-signal-16.vercel.app",
+    "https://campus-signal-16-git-uday-muthirevulatharun-netizens-projects.vercel.app",
 ]
+
+
+
 frontend_url = settings.FRONTEND_URL
+
 if frontend_url:
-    allowed_origins.extend(origin.strip() for origin in frontend_url.split(",") if origin.strip())
+    allowed_origins.extend(
+        origin.strip().rstrip("/")
+        for origin in frontend_url.split(",")
+        if origin.strip()
+    )
+
 allowed_origins = list(dict.fromkeys(allowed_origins))
 
 app = FastAPI(
