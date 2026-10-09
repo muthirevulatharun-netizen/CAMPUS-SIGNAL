@@ -22,13 +22,15 @@ allowed_origins = [
 ]
 
 
+
 frontend_url = settings.FRONTEND_URL
+
 if frontend_url:
-allowed_origins.extend(
-origin.strip().rstrip("/")
-for origin in frontend_url.split(",")
-if origin.strip()
-)
+    allowed_origins.extend(
+        origin.strip().rstrip("/")
+        for origin in frontend_url.split(",")
+        if origin.strip()
+    )
 
 allowed_origins = list(dict.fromkeys(allowed_origins))
 
