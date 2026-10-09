@@ -23,6 +23,172 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Keep the public landing page readable if the deployed Tailwind CSS is stale or missing. */
+.landing-page {
+  min-height: 100vh;
+  background: #0f172a;
+  color: #fff;
+}
+
+.landing-page .landing-hero {
+  position: relative;
+  display: flex;
+  min-height: 80vh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 4rem 1rem;
+  text-align: center;
+}
+
+.landing-page .landing-hero-content,
+.landing-page .landing-features-content {
+  z-index: 1;
+  width: min(100%, 64rem);
+  margin-inline: auto;
+}
+
+.landing-page .landing-logo {
+  position: relative;
+  display: flex;
+  width: 6rem;
+  height: 6rem;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 2rem;
+  border-radius: 9999px;
+  background: #4f46e5;
+}
+
+.landing-page .landing-logo-icon {
+  width: 3rem;
+  height: 3rem;
+  color: #fff;
+}
+
+.landing-page .landing-heading {
+  margin: 0 0 1.5rem;
+  color: #fff;
+  font-size: clamp(2.75rem, 8vw, 4.5rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+}
+
+.landing-page .landing-heading span {
+  background-image: linear-gradient(90deg, #818cf8, #22d3ee);
+  color: #67e8f9;
+}
+
+.landing-page .landing-tagline,
+.landing-page .landing-description,
+.landing-page .landing-workflow {
+  color: #cbd5e1;
+}
+
+.landing-page .landing-tagline {
+  margin: 0 auto 1.5rem;
+  font-size: clamp(1.25rem, 3vw, 1.5rem);
+}
+
+.landing-page .landing-description {
+  max-width: 42rem;
+  margin: 0 auto 2.5rem;
+}
+
+.landing-page .landing-workflow,
+.landing-page .landing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin: 0 auto 2.5rem;
+}
+
+.landing-page .landing-workflow span {
+  color: #e2e8f0;
+}
+
+.landing-page .landing-workflow span span {
+  display: inline-block;
+  border: 1px solid #334155;
+  border-radius: 9999px;
+  background: #1e293b;
+  padding: 0.25rem 0.75rem;
+}
+
+.landing-page .landing-actions {
+  gap: 1rem;
+  margin-bottom: 0;
+}
+
+.landing-page .landing-button {
+  display: inline-flex;
+  min-height: 3.5rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #475569;
+  border-radius: 0.5rem;
+  padding: 0.875rem 1.5rem;
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.landing-page .landing-button-primary {
+  border-color: #4f46e5;
+  background: #4f46e5;
+}
+
+.landing-page .landing-button-secondary {
+  background: #1e293b;
+}
+
+.landing-page .landing-button-tertiary {
+  border-color: #475569;
+  background: transparent;
+  color: #cbd5e1;
+}
+
+.landing-page .landing-features {
+  padding: 5rem 1rem;
+  background: #111c30;
+}
+
+.landing-page .landing-features-heading {
+  margin: 0 0 3rem;
+  color: #fff;
+  font-size: clamp(1.75rem, 4vw, 2rem);
+  font-weight: 700;
+  text-align: center;
+}
+
+.landing-page .landing-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+  gap: 2rem;
+}
+
+.landing-page .landing-feature-card {
+  border: 1px solid #334155;
+  border-radius: 1rem;
+  background: #1e293b;
+  padding: 1.5rem;
+}
+
+.landing-page .landing-feature-title {
+  margin: 0 0 0.5rem;
+  color: #fff;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.landing-page .landing-feature-description {
+  color: #cbd5e1;
+}
+
 @layer utilities {
   .bg-dark { background-color: #0F172A; }
   .text-gradient {
